@@ -1,0 +1,157 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+    margin-bottom: 60px;
+    font-family: 'Inter', sans-serif;
+    background: #F3F6FD;
+    color: #2E2E2E;
+}
+:root {
+    --primary-blue: #003366;
+    --secondary-blue: #0055A4;
+    --accent-orange: #F57C00;
+    --card-bg: rgba(255, 255, 255, 0.85);
+}
+
+/* Title */
+.page-title {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+/* Subtext */
+.subtitle {
+    color: #5c6781;
+    font-size: 0.95rem;
+}
+/* Soft Counter Badge */
+.badge-soft {
+    background: rgba(0, 51, 102, 0.10);
+    border: 1px solid rgba(0, 51, 102, 0.18);
+    padding: 6px 16px;
+    color: var(--primary-blue);
+    font-weight: 600;
+    border-radius: 20px;
+}
+/* Softer badge for counter */
+.bg-primary-soft {
+    background-color: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+/* Cards (Glassmorphism) */
+.glass-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    border: 1px solid rgba(200, 200, 255, 0.4);
+    box-shadow: 0px 10px 30px rgba(0, 51, 102, 0.10);
+    backdrop-filter: blur(12px);
+    transition: 0.25s ease;
+}
+    .glass-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0px 14px 35px rgba(0, 51, 102, 0.20);
+    }
+
+/* Card styling */
+.card {
+    border-radius: 1rem;
+}
+
+.card-title {
+    font-weight: 600;
+}
+
+/* Table Styling */
+.table thead th {
+    background-color: #eef2f9 !important;
+    color: var(--primary-blue);
+    font-weight: 700;
+    border: none;
+}
+
+.table tbody tr:hover {
+    background-color: #e9f0fb !important;
+}
+
+/* Rounded buttons */
+.btn-brand {
+    background: var(--accent-orange);
+    border: none;
+    padding: 10px 30px;
+    color: white !important;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1.05rem;
+    transition: 0.2s ease;
+}
+
+    .btn-brand:hover {
+        background: #d46500;
+    }
+
+/* Edit button */
+.btn-edit {
+    border: 1px solid var(--secondary-blue);
+    color: var(--secondary-blue);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+    .btn-edit:hover {
+        background: var(--secondary-blue);
+        color: #fff;
+    }
+
+/* Delete button */
+.btn-delete {
+    border: 1px solid var(--accent-orange);
+    color: var(--accent-orange);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+    .btn-delete:hover {
+        background: var(--accent-orange);
+        color: #fff;
+    }
+.badge-warning {
+    background: #FFD54F !important;
+    color: #795548 !important;
+}
+.badge-success {
+    background: #4CAF50 !important;
+}
+/* Improve form controls */
+.form-control {
+    border-radius: 10px;
+    border: 1px solid #ccd4e0;
+}
+
+    .form-control:focus {
+        box-shadow: 0 0 0 2px rgba(0, 51, 102, 0.2);
+        border-color: var(--primary-blue);
+    }
+.glass-card-small {
+    max-width: 420px;
+    padding: 25px;
+    border-radius: 16px;
+}

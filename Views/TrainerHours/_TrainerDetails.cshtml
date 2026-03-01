@@ -1,0 +1,69 @@
+﻿@model TrainerHoursApp.Models.TrainerDetailsViewModel
+
+<div class="p-3" style="min-width: 100%;">
+
+    <h5 class="fw-bold mb-1" style="color:#003366;">
+        @Model.Name – Hours Summary
+    </h5>
+    <p class="subtitle mb-3">All branches / batches for this trainer.</p>
+
+    <!-- Summary cards -->
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <div class="glass-card p-2 text-center">
+                <div class="small text-muted">Total Done</div>
+                <div class="fw-bold">@Model.TotalHours</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="glass-card p-2 text-center">
+                <div class="small text-muted">Total Planned</div>
+                <div class="fw-bold">@Model.TotalTargetHours</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="glass-card p-2 text-center">
+                <div class="small text-muted">Pending</div>
+                <div class="fw-bold text-warning">@Model.TotalPending</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="glass-card p-2 text-center">
+                <div class="small text-muted">Excess</div>
+                <div class="fw-bold text-success">@Model.TotalExcess</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail table -->
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Branch</th>
+                    @* if you added Batch *@
+                    <th>Batch</th>
+                    <th>Date</th>
+                    <th class="text-center">Hours</th>
+                    <th class="text-center">Planned</th>
+                    <th class="text-center">Pending</th>
+                    <th class="text-center">Excess</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Records)
+                {
+                    <tr>
+                        <td>@r.Branch</td>
+                        <td>@r.Batch</td>
+                        <td>@r.Date.ToString("dd-MMM-yyyy")</td>
+                        <td class="text-center">@r.Hours</td>
+                        <td class="text-center">@r.TotalHours</td>
+                        <td class="text-center">@r.PendingHours</td>
+                        <td class="text-center">@r.ExcessHours</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

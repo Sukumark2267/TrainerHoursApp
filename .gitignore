@@ -1,0 +1,19 @@
+# 1) Create .gitignore if it doesn't exist
+touch .gitignore
+
+# 2) Add common ignore rules
+cat >> .gitignore <<EOF
+# Visual Studio
+.vs/
+
+# Build folders
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Logs
+*.log
+EOF
