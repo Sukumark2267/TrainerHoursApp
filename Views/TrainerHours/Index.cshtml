@@ -1,7 +1,12 @@
-﻿@model IEnumerable<TrainerHoursApp.Models.TrainerHour>
+﻿@model IEnumerable<TrainerHoursApp.Models.TrainerAllocation>
 
 @{
-    ViewData["Title"] = "Trainer Hours";
+    ViewData["Title"] = "Trainer Dashboard";
+
+    // Group by Trainer + TrainingTitle so same trainer with different topics gets separate cards
+    var groupedTrainers = Model
+        .GroupBy(t => new { t.TrainerName, t.TrainingTitle })
+        .OrderBy(g => g.Key.TrainerName);
 }
 
 <div class="container py-4">
@@ -9,318 +14,209 @@
     <!-- Page header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="page-title mb-1">Trainer Hours</h2>
-            <p class="subtitle mb-3">Quickly track planned vs actual teaching hours for each branch.</p>
+            <h2 class="page-title mb-1">Trainer Dashboard</h2>
+            <p class="subtitle mb-0">
+                View all trainers, their trainings and allocations in one place.
+            </p>
         </div>
 
-        <div class="text-end">
-            <span class="badge-soft">
-                @Model.Count() record@(Model.Count() == 1 ? "" : "s")
-            </span>
-        </div>
-    </div>
-
-    <!-- Add form card -->
-    <div class="glass-card mb-4">
-        <div class="p-4">
-            <h5 class="card-title mb-3">Add Trainer Hours</h5>
-
-            @if (TempData["Error"] != null)
-            {
-                <div class="alert alert-danger py-2 mb-3">
-                    @TempData["Error"]
-                </div>
-            }
-
-            <form asp-action="Create" method="post" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label">Name</label>
-                    <input name="name" class="form-control" placeholder="Trainer name" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Branch</label>
-                    <input name="branch" class="form-control" placeholder="e.g. CSE, ECE" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Batch</label>
-                    <input name="batch" class="form-control" placeholder="e.g. Batch 1" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Date</label>
-                    <input type="date" name="date" class="form-control"
-                           value="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">No. of Hours</label>
-                    <input type="number" step="0.5" name="hours" class="form-control" placeholder="e.g. 3.5" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Total No. of Hours</label>
-                    <input type="number" step="0.5" name="totalHours" class="form-control" placeholder="Planned" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Notes</label>
-                    <input name="notes" class="form-control" placeholder="Any notes for this entry" />
-                </div>
-                <div class="col-12 d-flex justify-content-end mt-2">
-                    <button type="submit" class="btn-brand">
-                        <i class="bi bi-plus-circle me-1"></i> Add
-                    </button>
-                </div>
-            </form>
+        <div>
+            <a asp-action="AddTrainer" class="btn btn-primary btn-lg">
+                + Add Trainer
+            </a>
         </div>
     </div>
 
-    <!-- Grid card -->
-    <div class="glass-card">
-        <div class="px-4 py-3 border-0 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Records</h5>
+    <!-- Filter pills + search -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+
+        <ul class="nav nav-pills trainer-tabs">
+            <li class="nav-item">
+                <button class="nav-link active" type="button">All</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" type="button">Ongoing</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" type="button">Completed</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" type="button">Upcoming</button>
+            </li>
+        </ul>
+
+        <div class="input-group" style="max-width: 260px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input id="trainerSearch" type="text" class="form-control" placeholder="Search trainer or title" />
         </div>
+    </div>
 
-        <div class="p-0">
-            @if (!Model.Any())
-            {
-                <div class="p-4 text-center text-muted">
-                    No records yet. Start by adding a trainer entry above.
-                </div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table id="trainerTable" class="table table-hover table-striped mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Name</th>
-                                <th>Branch</th>
-                                <th>Batch</th>
-                                <th>Date</th>
-                                <th class="text-center">Planned.Hrs</th>
-                                <th class="text-center">Lectures.Hrs</th>
-                                <th class="text-center">Pending.Hrs</th>
-                                <th class="text-center">Excess.Hrs</th>
-                                <th>Notes</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in Model.OrderByDescending(m => m.Date))
-                            {
-                                <tr>
-                                    <td>
-                                        <a href="#"
-                                           class="trainer-link text-decoration-none"
-                                           data-name="@item.Name">
-                                            @item.Name
-                                        </a>
-                                    </td>
-                                    <td>@item.Branch</td>
-                                    <td>@item.Batch</td>
-                                    <td>@item.Date.ToString("dd-MMM-yyyy")</td>
-                                    <td class="text-center">@item.TotalHours</td>
-                                    <td class="text-center">@item.Hours</td>
+    @if (!groupedTrainers.Any())
+    {
+        <div class="glass-card p-4 text-center text-muted">
+            No trainer allocations yet. Click <strong>Add Trainer</strong> to create the first one.
+        </div>
+    }
+    else
+    {
+        <div id="trainerCards" class="d-flex flex-column gap-3">
 
-                                    <td class="text-center">
-                                        @if (item.PendingHours > 0)
+            @foreach (var group in groupedTrainers)
+            {
+                var first = group.OrderByDescending(g => g.TrainerName).First();
+                var branches = string.Join(", ", group.Select(g => g.Branch).Distinct());
+                var sections = string.Join(", ", group.Select(g => g.Section).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct());
+                var year = string.Join(", ", group.Select(g => g.Year).Distinct().OrderBy(y => y));
+                //var totalPlanned = group.Sum(g => g.TotalHours);
+              //  var allocationsCount = group.Count();
+
+                <div class="glass-card trainer-card p-3" data-search="@($"{group.Key.TrainerName} {group.Key.TrainingTitle} {branches}")">
+                    <div class="row g-3 align-items-center">
+
+                        <!-- Left column: name + title + meta -->
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-start gap-3">
+                                <!-- Avatar circle (initials) -->
+                                <div class="avatar-circle">
+                                    @(!string.IsNullOrWhiteSpace(group.Key.TrainerName)
+                                        ? group.Key.TrainerName.Trim()[0].ToString().ToUpper()
+                                        : "T")
+                                </div>
+
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h5 class="mb-0 fw-semibold">@group.Key.TrainerName</h5>
+                                        @if (!string.IsNullOrWhiteSpace(year))
                                         {
-                                            <span class="badge rounded-pill bg-warning text-dark">
-                                                @item.PendingHours
+                                            <span class="badge rounded-pill bg-light text-muted">
+                                                @(year + (year.Contains(",") ? " Years" : " Year"))
                                             </span>
+                                        }
+                                    </div>
+
+                                    <div class="text-muted small mb-1">
+                                        @if (!string.IsNullOrWhiteSpace(group.Key.TrainingTitle))
+                                        {
+                                            <span class="fw-semibold">@group.Key.TrainingTitle</span>
                                         }
                                         else
                                         {
-                                            <span class="text-muted">–</span>
+                                            <span class="fst-italic">No training title set</span>
                                         }
-                                    </td>
+                                    </div>
 
-                                    <td class="text-center">
-                                        @if (item.ExcessHours > 0)
+                                    <div class="text-muted small">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Branches:
+                                        <span class="fw-semibold">@branches</span>
+                                        @if (!string.IsNullOrWhiteSpace(sections))
                                         {
-                                            <span class="badge rounded-pill bg-success">
-                                                @item.ExcessHours
-                                            </span>
+                                            <span class="text-muted"> | Sections: </span>
+                                            <span class="fw-semibold">@sections</span>
                                         }
-                                        else
-                                        {
-                                            <span class="text-muted">–</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @item.Notes
-                                    </td>
-                                    <td class="text-center">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        <!-- EDIT BUTTON: opens modal and passes data-* attributes -->
-                                        <button type="button"
-                                                class="btn-edit me-1"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editModal"
-                                                data-id="@item.Id"
-                                                data-name="@item.Name"
-                                                data-branch="@item.Branch"
-                                                data-branch="@item.Batch"
-                                                data-date="@item.Date.ToString("yyyy-MM-dd")"
-                                                data-hours="@item.Hours"
-                                                data-total="@item.TotalHours"
-                                                data-notes="@item.Notes">
-                                            Edit
-                                        </button>
+                       
 
-                                        <!-- DELETE FORM -->
-                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post"
-                                              class="d-inline"
-                                              onsubmit="return confirm('Are you sure you want to delete this record?');">
-                                            <button type="submit" class="btn-delete">
-                                                Delete
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                        <!-- Right column: buttons -->
+                        <div class="col-md-3 text-md-end">
+                            <div class="d-flex justify-content-md-end gap-2 flex-wrap">
+                                <!-- Edit Hours: for now, go to Edit of the latest record -->
+                                <a asp-action="Edit" asp-route-id="@first.Id"
+                                   class="btn btn-outline-primary btn-sm">
+                                    Edit Hours
+                                </a>
+
+                                <!-- View Details: trainer summary with calendar etc. -->
+                                <a asp-action="TrainerDetails" asp-route-name="@group.Key.TrainerName"
+                                   class="btn btn-outline-secondary btn-sm">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             }
         </div>
+    }
+
+    <div class="mt-3 small text-muted">
+        <span class="fw-semibold">Note:</span>
+        Each card groups all branches / sections for the same trainer and training title.
+        Planned hours = sum of all allocated hours for that trainer.
     </div>
 </div>
 
-<!-- EDIT MODAL -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content glass-card p-3" style="max-width: 380px; margin:auto; border-radius:12px;">
-
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="fw-bold mb-0" style="color:#003366;">Edit Trainer Hours</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <hr class="mt-2 mb-3" />
-
-            <form asp-action="Edit" method="post" id="editForm">
-
-                <input type="hidden" name="Id" id="editId" />
-
-                <div class="mb-2">
-                    <label class="form-label small fw-semibold">Name</label>
-                    <input class="form-control form-control-sm" name="Name" id="editName" />
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label small fw-semibold">Branch</label>
-                    <input class="form-control form-control-sm" name="Branch" id="editBranch" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label small fw-semibold">Batch</label>
-                    <input class="form-control form-control-sm" name="Batch" id="editBatch" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label small fw-semibold">Date</label>
-                    <input type="date" class="form-control form-control-sm" name="Date" id="editDate" />
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label small fw-semibold">No. of Hours</label>
-                    <input class="form-control form-control-sm" name="Hours" id="editHours" />
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">Total No. of Hours</label>
-                    <input class="form-control form-control-sm" name="TotalHours" id="editTotalHours" />
-                </div>
-
-                <div class="d-flex justify-content-between mt-2">
-                    <button type="submit" class="btn-brand px-3 py-1">Update</button>
-                    <button type="button" class="btn-delete px-3 py-1" data-bs-dismiss="modal">Cancel</button>
-                </div>
-
-            </form>
-        </div>
-    </div>
-</div>
-<!-- TRAINER DETAILS MODAL -->
-<div class="modal fade" id="trainerDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content glass-card p-3" style="border-radius:12px;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="fw-bold mb-0" style="color:#003366;">Trainer Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div id="trainerDetailsBody">
-                <!-- content loaded by AJAX -->
-                <div class="text-center text-muted p-3 small">
-                    Loading...
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 @section Scripts {
     <script>
+        // Simple client-side search on trainer name / title / branch
         document.addEventListener('DOMContentLoaded', function () {
+            var searchInput = document.getElementById('trainerSearch');
+            var cardsContainer = document.getElementById('trainerCards');
 
-            // ---------- DataTables (update column indices if you added Batch) ----------
-            if (document.getElementById('trainerTable')) {
-                $('#trainerTable').DataTable({
-                    pageLength: 10,
-                    lengthMenu: [5, 10, 25, 50],
-                    order: [[3, 'desc']],   // 0:Name,1:Branch,2:Batch,3:Date,... adjust if no Batch
-                    columnDefs: [
-                        { orderable: false, targets: 9 } // Actions column index (with Batch)
-                        // if no Batch, use 6 instead of 8
-                    ]
+            if (!searchInput || !cardsContainer) return;
+
+            searchInput.addEventListener('input', function () {
+                var term = this.value.toLowerCase();
+
+                cardsContainer.querySelectorAll('.trainer-card').forEach(function (card) {
+                    var text = card.getAttribute('data-search') || '';
+                    text = text.toLowerCase();
+
+                    if (text.indexOf(term) !== -1) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
                 });
-            }
-
-            // ---------- Edit Modal prefilling ----------
-            var editModal = document.getElementById('editModal');
-            if (editModal) {
-                editModal.addEventListener('show.bs.modal', function (event) {
-                    var button = event.relatedTarget;
-
-                    var id = button.getAttribute('data-id');
-                    var name = button.getAttribute('data-name');
-                    var branch = button.getAttribute('data-branch');
-                    var batch = button.getAttribute('data-batch');
-                    var date = button.getAttribute('data-date');   // yyyy-MM-dd
-                    var hours = button.getAttribute('data-hours');
-                    var total = button.getAttribute('data-total');
-                    var notes = button.getAttribute('data-notes');
-
-                    document.getElementById('editId').value = id;
-                    document.getElementById('editName').value = name;
-                    document.getElementById('editBranch').value = branch;
-                    document.getElementById('editBatch').value = batch;
-                    document.getElementById('editDate').value = date;
-                    document.getElementById('editHours').value = hours;
-                    document.getElementById('editTotalHours').value = total;
-                    document.getElementById('editNotes').value = notes || '';
-                });
-            }
-
-            // ---------- Trainer Details popup (AJAX) ----------
-            $(document).on('click', '.trainer-link', function (e) {
-                e.preventDefault();
-
-                var name = $(this).data('name');
-                $('#trainerDetailsBody').html(
-                    '<div class="text-center text-muted p-3 small">Loading details for <b>' +
-                    name +
-                    '</b>...</div>'
-                );
-
-                var detailsModalEl = document.getElementById('trainerDetailsModal');
-                var detailsModal = new bootstrap.Modal(detailsModalEl);
-                detailsModal.show();
-
-                $.get('@Url.Action("TrainerDetails", "TrainerHours")', { name: name })
-                    .done(function (html) {
-                        $('#trainerDetailsBody').html(html);
-                    })
-                    .fail(function () {
-                        $('#trainerDetailsBody').html(
-                            '<div class="text-danger p-3 small">Error loading trainer details.</div>');
-                    });
             });
         });
     </script>
+
+    <style>
+        /* Extra styling to match the soft card look */
+
+        .trainer-tabs .nav-link {
+            border-radius: 999px;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.9rem;
+        }
+
+        .trainer-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 18px;
+            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+        }
+
+        .trainer-card .avatar-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0d6efd, #4f46e5);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+        }
+
+        .summary-pill {
+            background-color: rgba(15, 23, 42, 0.02);
+            border-radius: 12px;
+            padding: 0.5rem 0.75rem;
+            border: 1px dashed rgba(148, 163, 184, 0.6);
+        }
+    </style>
 }

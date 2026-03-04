@@ -1,0 +1,200 @@
+﻿@{
+    ViewData["Title"] = "Create New Training";
+
+    var branches = new List<string>
+    {
+        "Civil","EEE","MECH",
+        "ECE-A","ECE-B","ECE-C",
+        "CSE-A","CSE-B","CSE-C",
+        "AI&ML-A","AI&ML-B",
+        "CYBER","IOT",
+        "AI&DS-A","AI&DS-B"
+    };
+
+    var sections = new List<string> { "A", "B", "C", "D" };
+    var years = new List<string> { "1st", "2nd", "3rd", "4th" };
+
+    // 12-hour time options (simple + clean)
+    var timeOptions = new List<string>
+    {
+        "09:00 AM","10:00 AM","11:00 AM","12:00 PM",
+        "01:00 PM","02:00 PM","03:00 PM","04:00 PM",
+        "05:00 PM","06:00 PM"
+    };
+}
+
+<div class="container py-4">
+    <div class="training-card p-4 p-md-5">
+
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <h1 class="training-title mb-2">Create New Training</h1>
+            </div>
+        </div>
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger py-2 mb-4">
+                @TempData["Error"]
+            </div>
+        }
+
+        <form asp-action="Create" method="post">
+
+            <!-- Training Title -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Training Title</label>
+                <input name="trainingTitle" class="form-control form-control-lg"
+                       placeholder="e.g., Full Stack Development Workshop" />
+            </div>
+
+            <!-- Topic -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Topic</label>
+                <input name="topic" class="form-control form-control-lg"
+                       placeholder="e.g., React & Node.js Fundamentals" />
+            </div>
+
+            <!-- Date + Time -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Date</label>
+                    <input type="date" name="date" class="form-control form-control-lg"
+                           value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Time</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <select name="startTime" class="form-select form-select-lg">
+                                <option value="">Start</option>
+                                @foreach (var t in timeOptions)
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select name="endTime" class="form-select form-select-lg">
+                                <option value="">End</option>
+                                @foreach (var t in timeOptions)
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-text">Example: 09:00 AM to 05:00 PM</div>
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Location</label>
+                <input name="location" class="form-control form-control-lg"
+                       placeholder="e.g., Lab 1, A Building" />
+            </div>
+
+            <!-- Instructor (Trainer Name) -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Instructor</label>
+                <input name="name" class="form-control form-control-lg"
+                       placeholder="Instructor name" />
+            </div>
+
+            <!-- Branch / Section / Year -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Branch</label>
+                    <select name="branch" class="form-select form-select-lg">
+                        <option value="">CSE</option>
+                        @foreach (var b in branches)
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Section</label>
+                    <select name="section" class="form-select form-select-lg">
+                        <option value="">A</option>
+                        @foreach (var s in sections)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Year</label>
+                    <select name="year" class="form-select form-select-lg">
+                        <option value="">3rd</option>
+                        @foreach (var y in years)
+                        {
+                            <option value="@y">@y</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Planned Hours -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Planned Hours</label>
+                <input name="plannedHours" type="number" step="0.5" min="0.5"
+                       class="form-control form-control-lg"
+                       placeholder="e.g., 8" />
+                <div class="form-text">This is allocated/planned. Completed hours will be updated later in Edit Hours.</div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="d-flex justify-content-between gap-2 mt-5">
+                <a asp-action="Index" class="btn btn-outline-secondary btn-lg px-5">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    Create Training
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Match screenshot: clean white page, big inputs, soft border */
+    body {
+        background: #f6f8fb;
+    }
+
+    .training-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .training-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .form-control-lg, .form-select-lg {
+        height: 56px;
+        font-size: 1.05rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+    }
+
+        .form-control-lg:focus, .form-select-lg:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 .2rem rgba(37,99,235,.15);
+        }
+
+    .btn-lg {
+        height: 54px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+</style>

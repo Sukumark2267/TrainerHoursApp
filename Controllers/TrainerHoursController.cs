@@ -14,62 +14,133 @@ namespace TrainerHoursApp.Controllers
             _context = context;
         }
 
-        // Helper to calculate pending/excess
+        // ✅ Pending/Excess should use PlannedHours (NOT TotalHours)
         private void CalculatePendingAndExcess(TrainerHour th)
         {
-            if (th.Hours > th.TotalHours)
+            var planned = th.PlannedHours;
+
+            if (th.Hours > planned)
             {
-                th.ExcessHours = th.Hours - th.TotalHours;
+                th.ExcessHours = th.Hours - planned;
                 th.PendingHours = 0;
             }
             else
             {
-                th.PendingHours = th.TotalHours - th.Hours;
+                th.PendingHours = planned - th.Hours;
                 th.ExcessHours = 0;
             }
         }
 
-        // GET: TrainerHours
+        // ✅ Dashboard
         public async Task<IActionResult> Index()
         {
-            var list = await _context.TrainerHours
-                .OrderByDescending(t => t.Date)
-                .ToListAsync();
+            var list = await _context.TrainerAllocations
+        .OrderBy(t => t.TrainerName)
+        .ThenBy(t => t.TrainingTitle)
+        .ToListAsync();
 
             return View(list);
         }
 
-        // POST: TrainerHours/Create
+        // ✅ Add Trainer Page
+        [HttpGet]
+        public IActionResult AddTrainer()
+        {
+            return View();
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create( string name, string branch,string batch, DateTime date, decimal hours, decimal totalHours, string? notes)
+        public async Task<IActionResult> Create(string name, string trainingTitle,string topic, DateTime date, string startTime,string endTime,string location,
+                                                string instructor, string branch, string section, string year,decimal plannedHours, string? notes)
         {
-            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(branch))
+           
+
+            var trainerName = name.Trim();
+            var title = trainingTitle.Trim();
+            var branchVal = branch.Trim();
+            var sectionVal = section.Trim();
+            var yearVal = year.Trim();
+
+            // -----------------------------
+            // 1) UPSERT TrainerAllocation (NO date based duplicates)
+            // -----------------------------
+            var allocation = await _context.TrainerAllocations.FirstOrDefaultAsync(a =>
+                a.TrainerName == trainerName &&
+                a.TrainingTitle == title &&
+                a.Branch == branchVal &&
+                a.Section == sectionVal &&
+                a.Year == yearVal
+            );
+
+            if (allocation == null)
             {
-                // simple validation
-                TempData["Error"] = "Name and Branch are required.";
-                return RedirectToAction(nameof(Index));
+                allocation = new TrainerAllocation
+                {
+                    TrainerName = trainerName,
+                    TrainingTitle = title,
+                    Topic = string.IsNullOrWhiteSpace(topic) ? null : topic.Trim(),
+                    Branch = branchVal,
+                    Section = sectionVal,
+                    Year = yearVal,
+                    Location = string.IsNullOrWhiteSpace(location) ? null : location.Trim(),
+                    Instructor = string.IsNullOrWhiteSpace(instructor) ? null : instructor.Trim(),
+                    PlannedHours = plannedHours > 0 ? plannedHours : 0
+                };
+
+                _context.TrainerAllocations.Add(allocation);
+            }
+            else
+            {
+                // optional: update info if user entered latest values
+                allocation.Topic = string.IsNullOrWhiteSpace(topic) ? allocation.Topic : topic.Trim();
+                allocation.Location = string.IsNullOrWhiteSpace(location) ? allocation.Location : location.Trim();
+                allocation.Instructor = string.IsNullOrWhiteSpace(instructor) ? allocation.Instructor : instructor.Trim();
+
+                // if they change plannedHours later, update it
+                if (plannedHours > 0) allocation.PlannedHours = plannedHours;
+
+                _context.TrainerAllocations.Update(allocation);
             }
 
-            var th = new TrainerHour
-            {
-                Name = name,
-                Branch = branch,
-                Batch = batch,
-                Date = date,
-                Hours = hours,
-                TotalHours = totalHours,
-                Notes = notes
-            };
-
-            CalculatePendingAndExcess(th);
-
-            _context.Add(th);
             await _context.SaveChangesAsync();
+
+            // -----------------------------
+            // 2) UPSERT TrainerDailyHours (ONLY trainer+date unique)
+            // -----------------------------
+            var day = date.Date;
+
+            var daily = await _context.TrainerDailyHours.FirstOrDefaultAsync(d =>
+                d.TrainerName == trainerName && d.Date == day
+            );
+
+            if (daily == null)
+            {
+                daily = new TrainerDailyHour
+                {
+                    TrainerName = trainerName,
+                    Date = day,
+
+                    // For now, default NotEntered + 0 hours (later Edit page updates)
+                    CompletedHours = 8m,
+                    Status = "Present"
+                };
+
+                _context.TrainerDailyHours.Add(daily);
+            }
+
+            // update date info (time/notes) from the form
+            daily.StartTime = string.IsNullOrWhiteSpace(startTime) ? daily.StartTime : startTime.Trim();
+            daily.EndTime = string.IsNullOrWhiteSpace(endTime) ? daily.EndTime : endTime.Trim();
+            daily.Notes = string.IsNullOrWhiteSpace(notes) ? daily.Notes : notes.Trim();
+
+            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: TrainerHours/Edit/5
+        // ✅ Edit Hours screen (your existing edit)
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var th = await _context.TrainerHours.FindAsync(id);
@@ -77,7 +148,7 @@ namespace TrainerHoursApp.Controllers
             return View(th);
         }
 
-        // POST: TrainerHours/Edit/5
+        // ✅ Update hours + notes etc
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, TrainerHour model)
@@ -85,18 +156,18 @@ namespace TrainerHoursApp.Controllers
             if (id != model.Id) return NotFound();
 
             if (!ModelState.IsValid)
-            {
                 return View(model);
-            }
 
+            // ✅ IMPORTANT: keep pending/excess correct based on PlannedHours
             CalculatePendingAndExcess(model);
 
             _context.Update(model);
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: TrainerHours/Delete/5
+        // ✅ Delete record
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
@@ -109,6 +180,8 @@ namespace TrainerHoursApp.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+
+        // ✅ Trainer Details popup (Partial view)
         public async Task<IActionResult> TrainerDetails(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -123,17 +196,17 @@ namespace TrainerHoursApp.Controllers
             if (!records.Any())
                 return Content("No records found for this trainer.");
 
-            var totalHours = records.Sum(r => r.Hours);
-            var totalTarget = records.Sum(r => r.TotalHours);
+            var totalDone = records.Sum(r => r.Hours);
+            var totalPlanned = records.Sum(r => r.PlannedHours);
 
             var viewModel = new TrainerDetailsViewModel
             {
                 Name = name,
                 Records = records,
-                TotalHours = totalHours,
-                TotalTargetHours = totalTarget,
-                TotalPending = totalHours < totalTarget ? totalTarget - totalHours : 0,
-                TotalExcess = totalHours > totalTarget ? totalHours - totalTarget : 0
+                TotalHours = totalDone,
+                TotalTargetHours = totalPlanned,
+                TotalPending = totalDone < totalPlanned ? totalPlanned - totalDone : 0,
+                TotalExcess = totalDone > totalPlanned ? totalDone - totalPlanned : 0
             };
 
             return PartialView("_TrainerDetails", viewModel);
