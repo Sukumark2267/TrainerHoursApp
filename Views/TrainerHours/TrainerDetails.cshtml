@@ -1,0 +1,427 @@
+﻿@model TrainerHoursApp.Models.TrainerDetailsViewModel
+
+@{
+    ViewData["Title"] = "Trainer Details";
+
+    var firstDay = new DateTime(Model.Year, Model.Month, 1);
+    var daysInMonth = DateTime.DaysInMonth(Model.Year, Model.Month);
+    var startDayOfWeek = (int)firstDay.DayOfWeek; // Sunday = 0
+    var today = DateTime.Today;
+
+    string monthTitle = firstDay.ToString("MMMM yyyy");
+}
+
+<div class="trainer-details-wrapper">
+    <div class="details-card">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="fw-bold mb-0 title-sm">Trainer Details</h3>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary px-3 py-1">Back</a>
+        </div>
+
+        <!-- Trainer info + summary in same row -->
+        <div class="trainer-top-row mb-3">
+            <div class="trainer-left">
+                <div class="avatar-circle">
+                    @(string.IsNullOrWhiteSpace(Model.TrainerName) ? "T" : Model.TrainerName.Trim()[0].ToString().ToUpper())
+                </div>
+
+                <div>
+                    <h4 class="mb-1 fw-bold trainer-name">@Model.TrainerName</h4>
+                    <div class="text-muted small">
+                        Branch: @Model.BranchesText
+                    </div>
+                </div>
+            </div>
+
+            <div class="mini-stats-row">
+                <div class="mini-stat planned-box">
+                    <div class="mini-stat-label">Planned</div>
+                    <div class="mini-stat-value">@Model.TotalPlannedHours.ToString("0.##")</div>
+                </div>
+                <div class="mini-stat completed-box">
+                    <div class="mini-stat-label">Completed</div>
+                    <div class="mini-stat-value">@Model.TotalCompletedHours.ToString("0.##")</div>
+                </div>
+                <div class="mini-stat pending-box">
+                    <div class="mini-stat-label">Pending</div>
+                    <div class="mini-stat-value">@Model.TotalPendingHours.ToString("0.##")</div>
+                </div>
+                <div class="mini-stat excess-box">
+                    <div class="mini-stat-label">Excess</div>
+                    <div class="mini-stat-value">@Model.TotalExcessHours.ToString("0.##")</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="calendar-box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <a asp-action="TrainerDetails"
+                   asp-route-name="@Model.TrainerName"
+                   asp-route-year="@(firstDay.AddMonths(-1).Year)"
+                   asp-route-month="@(firstDay.AddMonths(-1).Month)"
+                   class="btn btn-sm btn-light nav-btn">
+                    ‹
+                </a>
+
+                <div class="fw-semibold month-title">@monthTitle</div>
+
+                <a asp-action="TrainerDetails"
+                   asp-route-name="@Model.TrainerName"
+                   asp-route-year="@(firstDay.AddMonths(1).Year)"
+                   asp-route-month="@(firstDay.AddMonths(1).Month)"
+                   class="btn btn-sm btn-light nav-btn">
+                    ›
+                </a>
+            </div>
+
+            <div class="calendar-grid header-grid">
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+            </div>
+
+            <div class="calendar-grid body-grid">
+                @for (int i = 0; i < startDayOfWeek; i++)
+                {
+                    <div class="calendar-cell empty"></div>
+                }
+
+                @for (int day = 1; day <= daysInMonth; day++)
+                {
+                    var currentDate = new DateTime(Model.Year, Model.Month, day);
+                    var entry = Model.DailyHours.FirstOrDefault(x => x.Date.Date == currentDate.Date);
+
+                    string dotClass = "dot-gray";
+
+                    if (currentDate > today)
+                    {
+                        dotClass = "dot-gray";
+                    }
+                    else if (entry != null && entry.CompletedHours > 0)
+                    {
+                        dotClass = "dot-green";
+                    }
+                    else if (currentDate < today)
+                    {
+                        dotClass = "dot-red";
+                    }
+
+                    <div class="calendar-cell date-click"
+                         data-date="@currentDate.ToString("yyyy-MM-dd")"
+                         data-trainer="@Model.TrainerName"
+                         data-title="@Model.TrainingTitle"
+                         data-hours="@(entry?.CompletedHours ?? 0)"
+                         data-notes="@(entry?.Notes ?? "")">
+                        <div class="date-number">@day</div>
+                        <div class="status-dot @dotClass"></div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="d-flex justify-content-center gap-4 small text-muted mt-2">
+            <div><span class="legend-dot dot-green"></span> Present</div>
+            <div><span class="legend-dot dot-red"></span> Absent</div>
+            <div><span class="legend-dot dot-gray"></span> Future</div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Hours Modal -->
+<div class="modal fade" id="editHoursModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content modal-soft">
+            <div class="modal-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h6 class="fw-bold mb-1" id="modalTrainingTitle">Training</h6>
+                        <div class="text-muted small">@Model.BranchesText</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form asp-action="UpdateDailyHours" method="post">
+                    <input type="hidden" name="trainerName" id="modalTrainerName" />
+                    <input type="hidden" name="date" id="modalDate" />
+
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Hours</label>
+                        <input type="number" step="0.5" class="form-control form-control-sm" name="completedHours" id="modalHours" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Notes</label>
+                        <textarea class="form-control form-control-sm" rows="2" name="notes" id="modalNotes"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm px-3">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const cells = document.querySelectorAll(".date-click");
+            const modalEl = document.getElementById("editHoursModal");
+            const modal = new bootstrap.Modal(modalEl);
+
+            cells.forEach(cell => {
+                cell.addEventListener("click", function () {
+                    document.getElementById("modalTrainerName").value = this.dataset.trainer;
+                    document.getElementById("modalDate").value = this.dataset.date;
+                    document.getElementById("modalTrainingTitle").innerText = this.dataset.title;
+                    document.getElementById("modalHours").value = this.dataset.hours;
+                    document.getElementById("modalNotes").value = this.dataset.notes;
+                    modal.show();
+                });
+            });
+        });
+    </script>
+}
+
+<style>
+    body {
+        background: #f5f7fb;
+        margin: 0;
+        padding: 0;
+    }
+
+    .trainer-details-wrapper {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        padding: 8px;
+    }
+
+    .details-card {
+        width: 100%;
+        max-width: 760px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+        border: 1px solid rgba(148,163,184,.14);
+        padding: 12px 14px;
+    }
+
+    .title-sm {
+        font-size: 1.45rem;
+        margin-bottom: 0;
+    }
+
+    .trainer-name {
+        font-size: 1.55rem;
+        line-height: 1.1;
+        margin-bottom: 4px;
+    }
+
+    .avatar-circle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+    }
+
+    .trainer-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+
+    .trainer-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: auto;
+    }
+
+    .mini-stats-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .mini-stat {
+        width: 88px;
+        border-radius: 10px;
+        padding: 6px 6px;
+        border: 1px solid #eee;
+        text-align: center;
+    }
+
+    .planned-box {
+        background: #eef6ff;
+    }
+
+    .completed-box {
+        background: #eefaf3;
+    }
+
+    .pending-box {
+        background: #fff8ea;
+    }
+
+    .excess-box {
+        background: #f4f0ff;
+    }
+
+    .mini-stat-label {
+        font-size: 10px;
+        color: #6b7280;
+        margin-bottom: 2px;
+    }
+
+    .mini-stat-value {
+        font-size: 1.02rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .calendar-box {
+        background: #f8fafc;
+        border-radius: 14px;
+        padding: 8px;
+    }
+
+    .month-title {
+        font-size: 0.95rem;
+    }
+
+    .nav-btn {
+        min-width: 28px;
+        min-height: 28px;
+        border-radius: 8px;
+        padding: 0 6px;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+    }
+
+    .header-grid div {
+        text-align: center;
+        font-size: 10px;
+        color: #64748b;
+        padding: 2px 0 4px 0;
+    }
+
+    .calendar-cell {
+        min-height: 44px;
+        background: white;
+        border-radius: 8px;
+        padding: 4px;
+        position: relative;
+        cursor: pointer;
+        border: 1px solid #e8edf5;
+    }
+
+        .calendar-cell.empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+
+    .date-number {
+        font-size: 11px;
+        font-weight: 500;
+        color: #334155;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        position: absolute;
+        bottom: 6px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .dot-green {
+        background: #34c38f;
+    }
+
+    .dot-red {
+        background: #ef4444;
+    }
+
+    .dot-gray {
+        background: #cbd5e1;
+    }
+
+    .legend-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+
+    .modal-soft {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    }
+
+    @@media (max-width: 768px) {
+        .details-card {
+            max-width: 100%;
+            padding: 10px 12px;
+        }
+
+        .trainer-top-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .trainer-name {
+            font-size: 1.25rem;
+        }
+
+        .title-sm {
+            font-size: 1.25rem;
+        }
+
+        .calendar-cell {
+            min-height: 38px;
+        }
+
+        .mini-stats-row {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .mini-stat {
+            width: 82px;
+            padding: 6px 5px;
+        }
+
+        .mini-stat-value {
+            font-size: 0.95rem;
+        }
+    }
+</style>

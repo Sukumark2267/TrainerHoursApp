@@ -124,12 +124,6 @@
                         <!-- Right column: buttons -->
                         <div class="col-md-3 text-md-end">
                             <div class="d-flex justify-content-md-end gap-2 flex-wrap">
-                                <!-- Edit Hours: for now, go to Edit of the latest record -->
-                                <a asp-action="Edit" asp-route-id="@first.Id"
-                                   class="btn btn-outline-primary btn-sm">
-                                    Edit Hours
-                                </a>
-
                                 <!-- View Details: trainer summary with calendar etc. -->
                                 <a asp-action="TrainerDetails" asp-route-name="@group.Key.TrainerName"
                                    class="btn btn-outline-secondary btn-sm">

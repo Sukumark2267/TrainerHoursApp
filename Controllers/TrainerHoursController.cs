@@ -182,34 +182,94 @@ namespace TrainerHoursApp.Controllers
         }
 
         // ✅ Trainer Details popup (Partial view)
-        public async Task<IActionResult> TrainerDetails(string name)
+        public async Task<IActionResult> TrainerDetails(string name, int? year, int? month)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return BadRequest("Trainer name is required.");
 
-            var records = await _context.TrainerHours
-                .Where(t => t.Name == name)
-                .OrderBy(t => t.Branch)
-                .ThenByDescending(t => t.Date)
+            var selectedYear = year ?? DateTime.Today.Year;
+            var selectedMonth = month ?? DateTime.Today.Month;
+
+            // Trainer allocations (all branch/section/topic mappings for same trainer)
+            var allocations = await _context.TrainerAllocations
+                .Where(x => x.TrainerName == name)
                 .ToListAsync();
 
-            if (!records.Any())
-                return Content("No records found for this trainer.");
+            if (!allocations.Any())
+                return NotFound();
 
-            var totalDone = records.Sum(r => r.Hours);
-            var totalPlanned = records.Sum(r => r.PlannedHours);
+            // Daily hours only for selected month
+            var dailyHours = await _context.TrainerDailyHours
+                .Where(x => x.TrainerName == name &&
+                            x.Date.Year == selectedYear &&
+                            x.Date.Month == selectedMonth)
+                .OrderBy(x => x.Date)
+                .ToListAsync();
 
-            var viewModel = new TrainerDetailsViewModel
+            var branchesText = string.Join(", ",
+                allocations.Select(x => x.Branch).Distinct());
+
+            // Trainer-wise calculations only
+            var totalPlanned = allocations.Sum(x => x.PlannedHours);
+            var totalCompleted = dailyHours.Sum(x => x.CompletedHours);
+
+            decimal pending = 0;
+            decimal excess = 0;
+
+            if (totalCompleted > totalPlanned)
             {
-                Name = name,
-                Records = records,
-                TotalHours = totalDone,
-                TotalTargetHours = totalPlanned,
-                TotalPending = totalDone < totalPlanned ? totalPlanned - totalDone : 0,
-                TotalExcess = totalDone > totalPlanned ? totalDone - totalPlanned : 0
+                excess = totalCompleted - totalPlanned;
+            }
+            else
+            {
+                pending = totalPlanned - totalCompleted;
+            }
+
+            var vm = new TrainerDetailsViewModel
+            {
+                TrainerName = name,
+                TrainingTitle = allocations.First().TrainingTitle,
+                BranchesText = branchesText,
+                TotalPlannedHours = totalPlanned,
+                TotalCompletedHours = totalCompleted,
+                TotalPendingHours = pending,
+                TotalExcessHours = excess,
+                Year = selectedYear,
+                Month = selectedMonth,
+                DailyHours = dailyHours
             };
 
-            return PartialView("_TrainerDetails", viewModel);
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateDailyHours(string trainerName, DateTime date, decimal completedHours, string? notes)
+        {
+            var entry = await _context.TrainerDailyHours
+                .FirstOrDefaultAsync(x => x.TrainerName == trainerName && x.Date.Date == date.Date);
+
+            if (entry == null)
+            {
+                entry = new TrainerDailyHour
+                {
+                    TrainerName = trainerName,
+                    Date = date.Date
+                };
+                _context.TrainerDailyHours.Add(entry);
+            }
+
+            entry.CompletedHours = completedHours;
+            entry.Notes = notes;
+
+            if (completedHours > 0)
+                entry.Status = "Present";
+            else
+                entry.Status = "Absent";
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(TrainerDetails), new { name = trainerName, year = date.Year, month = date.Month });
         }
     }
 }

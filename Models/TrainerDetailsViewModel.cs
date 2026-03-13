@@ -2,13 +2,20 @@
 {
     public class TrainerDetailsViewModel
     {
-        public string Name { get; set; }
+        public string TrainerName { get; set; } = "";
+        public string TrainingTitle { get; set; } = "";
+        public string BranchesText { get; set; } = "";
 
-        public List<TrainerHour> Records { get; set; } = new();
+        public decimal TotalPlannedHours { get; set; }
+        public decimal TotalCompletedHours { get; set; }
+        public decimal TotalPendingHours { get; set; }
+        public decimal TotalMissedHours { get; set; }
 
-        public decimal TotalHours { get; set; }
-        public decimal TotalTargetHours { get; set; }
-        public decimal TotalPending { get; set; }
-        public decimal TotalExcess { get; set; }
+        public decimal TotalExcessHours { get; set; }
+
+        public int Year { get; set; }
+        public int Month { get; set; }
+
+        public List<TrainerDailyHour> DailyHours { get; set; } = new();
     }
 }
